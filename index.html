@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Potenzrechengesetze - Lerntrainer</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { slate: { 850: '#151e2e' } } } }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- MathJax für Formeln -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- Canvas Confetti für das Feuerwerk -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+            startup: {
+                pageReady: () => {
+                    return MathJax.startup.defaultPageReady().then(() => {
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('main-wrapper').classList.remove('hidden');
+                        initGamification();
+                        showSection('welcome');
+                    });
+                }
+            }
+        };
+
+        // Gamification State (0 bis 3 Trophäen pro Thema)
+        let trophies = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
+        let currentLevel = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
+
+        // Die dynamischen Fragen-Datenbanken (Level 0, Level 1, Level 2)
+        const allQuestions = {
+            1: [
+                [ { type: 'calc', q: '\\( 2^4 = \\)', a: '16' }, { type: 'calc', q: '\\( (-3)^3 = \\)', a: '-27' }, { type: 'calc', q: '\\( 10^3 = \\)', a: '1000' }, { type: 'calc', q: '\\( -5^2 = \\)', a: '-25' }, { type: 'calc', q: '\\( 7^0 = \\)', a: '1' } ],
+                [ { type: 'calc', q: '\\( 2^{-3} = \\)', a: ['1/8', '0.125'] }, { type: 'calc', q: '\\( (-2)^{-2} = \\)', a: ['1/4', '0.25'] }, { type: 'calc', q: '\\( (1/2)^{-2} = \\)', a: '4' }, { type: 'calc', q: '\\( 10^{-2} = \\)', a: ['1/100', '0.01'] }, { type: 'calc', q: '\\( -4^{-2} = \\)', a: ['-1/16', '-0.0625'] } ],
+                [ { type: 'calc', q: '\\( (2/3)^{-2} = \\)', a: ['9/4', '2.25'] }, { type: 'calc', q: '\\( 0{,}5^{-3} = \\)', a: '8' }, { type: 'calc', q: '\\( (-1)^{10} = \\)', a: '1' }, { type: 'calc', q: '\\( (-1)^{11} = \\)', a: '-1' }, { type: 'calc', q: '\\( 0{,}2^{-2} = \\)', a: '25' } ]
+            ],
+            2: [
+                [ { type: 'calc', q: 'Schreibe aus: \\( 2{,}5 \\cdot 10^3 = \\)', a: '2500' }, { type: 'calc', q: 'Schreibe aus: \\( 1{,}04 \\cdot 10^2 = \\)', a: '104' }, { type: 'sci', q: 'Als Zehnerpotenz: \\( 70000 = \\)', aM: '7', aE: '4' }, { type: 'sci', q: 'Als Zehnerpotenz: \\( 8200000 = \\)', aM: '8.2', aE: '6' }, { type: 'calc', q: 'Schreibe aus: \\( 5 \\cdot 10^1 = \\)', a: '50' } ],
+                [ { type: 'calc', q: 'Schreibe aus: \\( 4{,}1 \\cdot 10^{-3} = \\)', a: '0.0041' }, { type: 'sci', q: 'Als Zehnerpotenz: \\( 0{,}00073 = \\)', aM: '7.3', aE: '-4' }, { type: 'calc', q: 'Schreibe aus: \\( 8 \\cdot 10^{-5} = \\)', a: '0.00008' }, { type: 'sci', q: 'Als Zehnerpotenz: \\( 0{,}000005 = \\)', aM: '5', aE: '-6' }, { type: 'calc', q: 'Schreibe aus: \\( 9{,}9 \\cdot 10^{-2} = \\)', a: '0.099' } ],
+                [ { type: 'sci', q: 'Fasse als SCI zusammen: \\( (2 \\cdot 10^3) \\cdot (4 \\cdot 10^4) = \\)', aM: '8', aE: '7' }, { type: 'sci', q: '\\( (6 \\cdot 10^5) : (2 \\cdot 10^2) = \\)', aM: '3', aE: '3' }, { type: 'sci', q: '\\( (3 \\cdot 10^{-2}) \\cdot (3 \\cdot 10^{-3}) = \\)', aM: '9', aE: '-5' }, { type: 'sci', q: '\\( (8 \\cdot 10^{-4}) : (4 \\cdot 10^{-6}) = \\)', aM: '2', aE: '2' }, { type: 'sci', q: '\\( (1{,}5 \\cdot 10^4) \\cdot (2 \\cdot 10^3) = \\)', aM: '3', aE: '7' } ]
+            ],
+            3: [
+                [ { type: 'exp', q: '\\( 2^3 \\cdot 2^4 = \\)', b: '2', a: '7' }, { type: 'exp', q: '\\( 3^5 : 3^2 = \\)', b: '3', a: '3' }, { type: 'exp', q: '\\( x^4 \\cdot x^4 = \\)', b: 'x', a: '8' }, { type: 'exp', q: '\\( \\frac{5^6}{5^5} = \\)', b: '5', a: '1' }, { type: 'exp', q: '\\( 10^2 \\cdot 10^5 = \\)', b: '10', a: '7' } ],
+                [ { type: 'exp', q: '\\( 2^{-3} \\cdot 2^5 = \\)', b: '2', a: '2' }, { type: 'exp', q: '\\( 3^4 : 3^{-2} = \\)', b: '3', a: '6' }, { type: 'exp', q: '\\( x^{-2} \\cdot x^{-3} = \\)', b: 'x', a: '-5' }, { type: 'exp', q: '\\( \\frac{5^{-4}}{5^2} = \\)', b: '5', a: '-6' }, { type: 'exp', q: '\\( 10^{-3} \\cdot 10^3 = \\)', b: '10', a: '0' } ],
+                [ { type: 'exp', q: '\\( 2^4 \\cdot 2^{-3} \\cdot 2^2 = \\)', b: '2', a: '3' }, { type: 'exp', q: '\\( \\frac{3^5 \\cdot 3^{-2}}{3^4} = \\)', b: '3', a: '-1' }, { type: 'exp', q: '\\( x^{-4} \\cdot x^2 : x^{-5} = \\)', b: 'x', a: '3' }, { type: 'exp', q: '\\( \\frac{y^{-2}}{y^{-5} \\cdot y^2} = \\)', b: 'y', a: '1' }, { type: 'exp', q: '\\( 10^4 \\cdot 10^{-6} \\cdot 10^2 = \\)', b: '10', a: '0' } ]
+            ],
+            4: [
+                [ { type: 'exp', q: '\\( (2^3)^2 = \\)', b: '2', a: '6' }, { type: 'exp', q: '\\( (x^4)^2 = \\)', b: 'x', a: '8' }, { type: 'multivar', q: '\\( (x^2 y^3)^2 = \\)', b1: 'x', a1: '4', b2: 'y', a2: '6' }, { type: 'exp', q: '\\( (10^2)^3 = \\)', b: '10', a: '6' }, { type: 'exp', q: '\\( (y^5)^0 = \\)', b: 'y', a: '0' } ],
+                [ { type: 'exp', q: '\\( (2^{-2})^3 = \\)', b: '2', a: '-6' }, { type: 'multivar', q: '\\( (x^3 y^{-2})^2 = \\)', b1: 'x', a1: '6', b2: 'y', a2: '-4' }, { type: 'exp', q: '\\( (x^{-3})^{-3} = \\)', b: 'x', a: '9' }, { type: 'exp', q: '\\( (10^{-1})^4 = \\)', b: '10', a: '-4' }, { type: 'multivar', q: '\\( (x^{-1} y^2)^{-3} = \\)', b1: 'x', a1: '3', b2: 'y', a2: '-6' } ],
+                [ { type: 'exp', q: '\\( ((2^2)^3)^2 = \\)', b: '2', a: '12' }, { type: 'multivar', q: '\\( ((x^2 y)^2)^3 = \\)', b1: 'x', a1: '12', b2: 'y', a2: '6' }, { type: 'exp', q: '\\( \\frac{(3^2)^4}{(3^3)^2} = \\)', b: '3', a: '2' }, { type: 'multivar', q: '\\( (x^3)^2 \\cdot (y^{-2})^{-3} = \\)', b1: 'x', a1: '6', b2: 'y', a2: '6' }, { type: 'exp', q: '\\( ((10^2)^{-1})^3 = \\)', b: '10', a: '-6' } ]
+            ],
+            5: [
+                [ { type: 'base', q: '\\( 2^3 \\cdot 4^3 = \\)', e: '3', a: '8' }, { type: 'base', q: '\\( 15^4 : 3^4 = \\)', e: '4', a: '5' }, { type: 'base', q: '\\( x^2 \\cdot y^2 = \\)', e: '2', a: ['xy', 'yx'] }, { type: 'base', q: '\\( \\frac{20^5}{4^5} = \\)', e: '5', a: '5' }, { type: 'base', q: '\\( 0{,}5^3 \\cdot 4^3 = \\)', e: '3', a: '2' } ],
+                [ { type: 'base', q: '\\( 2^{-2} \\cdot 5^{-2} = \\)', e: '-2', a: '10' }, { type: 'base', q: '\\( 12^{-3} : 4^{-3} = \\)', e: '-3', a: '3' }, { type: 'base', q: '\\( (1/2)^4 \\cdot 6^4 = \\)', e: '4', a: '3' }, { type: 'base', q: '\\( \\frac{100^{-2}}{25^{-2}} = \\)', e: '-2', a: '4' }, { type: 'base', q: '\\( 0{,}2^{-4} \\cdot 10^{-4} = \\)', e: '-4', a: '2' } ],
+                [ { type: 'base', q: '\\( (2^3 \\cdot 3^3) : 6^3 = \\)', e: '3', a: '1' }, { type: 'base', q: '\\( 2{,}5^2 \\cdot 4^2 = \\)', e: '2', a: '10' }, { type: 'base', q: '\\( (x^4 \\cdot y^4) : (xy)^4 = \\)', e: '4', a: '1' }, { type: 'base', q: '\\( \\frac{1{,}5^{-2} \\cdot 4^{-2}}{2^{-2}} = \\)', e: '-2', a: '3' }, { type: 'base', q: '\\( 4^2 \\cdot 1{,}5^2 = \\)', e: '2', a: '6' } ]
+            ],
+            6: [
+                [ { type: 'calc', q: '\\( 9^{\\frac{1}{2}} = \\)', a: '3' }, { type: 'calc', q: '\\( 8^{\\frac{1}{3}} = \\)', a: '2' }, { type: 'calc', q: '\\( 16^{\\frac{1}{4}} = \\)', a: '2' }, { type: 'calc', q: '\\( 81^{\\frac{1}{2}} = \\)', a: '9' }, { type: 'calc', q: '\\( 1000^{\\frac{1}{3}} = \\)', a: '10' } ],
+                [ { type: 'calc', q: '\\( 27^{\\frac{2}{3}} = \\)', a: '9' }, { type: 'calc', q: '\\( 16^{\\frac{3}{4}} = \\)', a: '8' }, { type: 'calc', q: '\\( 32^{\\frac{2}{5}} = \\)', a: '4' }, { type: 'calc', q: '\\( 100^{\\frac{3}{2}} = \\)', a: '1000' }, { type: 'calc', q: '\\( 4^{\\frac{5}{2}} = \\)', a: '32' } ],
+                [ { type: 'calc', q: '\\( 8^{-\\frac{1}{3}} = \\)', a: ['1/2', '0.5'] }, { type: 'calc', q: '\\( 16^{-\\frac{3}{4}} = \\)', a: ['1/8', '0.125'] }, { type: 'calc', q: '\\( (1/9)^{-\\frac{1}{2}} = \\)', a: '3' }, { type: 'calc', q: '\\( (8/27)^{-\\frac{2}{3}} = \\)', a: ['9/4', '2.25'] }, { type: 'calc', q: '\\( 0{,}25^{-\\frac{1}{2}} = \\)', a: '2' } ]
+            ],
+            7: [
+                [ { type: 'multivar', q: '\\( x^4 \\cdot x^2 \\cdot y^3 = \\)', b1: 'x', a1: '6', b2: 'y', a2: '3' }, { type: 'multivar', q: '\\( (x^2)^3 \\cdot y^4 = \\)', b1: 'x', a1: '6', b2: 'y', a2: '4' }, { type: 'multivar', q: '\\( \\frac{x^5 y^3}{x^2 y^2} = \\)', b1: 'x', a1: '3', b2: 'y', a2: '1' }, { type: 'multivar', q: '\\( x^2 y \\cdot x^3 y^2 = \\)', b1: 'x', a1: '5', b2: 'y', a2: '3' }, { type: 'multivar', q: '\\( (xy)^4 = \\)', b1: 'x', a1: '4', b2: 'y', a2: '4' } ],
+                [ { type: 'multivar', q: '\\( \\frac{(x y^2)^3}{x^2 y^5} = \\)', b1: 'x', a1: '1', b2: 'y', a2: '1' }, { type: 'multivar', q: '\\( x^3 y^{-2} \\cdot x^{-1} y^4 = \\)', b1: 'x', a1: '2', b2: 'y', a2: '2' }, { type: 'multivar', q: '\\( \\sqrt{x^4 y^6} = \\)', b1: 'x', a1: '2', b2: 'y', a2: '3' }, { type: 'multivar', q: '\\( (x^{\\frac{1}{2}} y^{\\frac{1}{3}})^6 = \\)', b1: 'x', a1: '3', b2: 'y', a2: '2' }, { type: 'multivar', q: '\\( \\frac{x^{-2} y^3}{x^{-4} y} = \\)', b1: 'x', a1: '2', b2: 'y', a2: '2' } ],
+                [ { type: 'poly', q: '\\( \\frac{x^2y + x^3y^2}{x^2y} = \\)', a: ['1+xy', 'xy+1', '1+yx', 'yx+1'] }, { type: 'multivar', q: '\\( \\frac{x^4y^3 + x^3y^4}{x+y} = \\)', b1: 'x', a1: '3', b2: 'y', a2: '3' }, { type: 'poly', q: '\\( \\frac{x^4y^2 - x^2y^4}{x^2y^2} = \\)', a: ['x^2-y^2', '-y^2+x^2'] }, { type: 'multivar', q: '\\( \\frac{x^4y^6 + x^6y^4}{x^2y^4 + x^4y^2} = \\)', b1: 'x', a1: '2', b2: 'y', a2: '2' }, { type: 'multivar', q: '\\( \\frac{x^3y^4 - x^2y^5}{x-y} = \\)', b1: 'x', a1: '2', b2: 'y', a2: '4' } ]
+            ]
+        };
+
+        // Code generieren (Base36 Encoding)
+        function generateSaveCode() {
+            let num = 0;
+            for(let i=1; i<=7; i++) {
+                num += trophies[i] * Math.pow(4, i-1);
+            }
+            let code = num.toString(36).toUpperCase().padStart(4, '0');
+            document.getElementById('save-code-display').value = code;
+        }
+
+        // Code laden
+        function loadSaveCode() {
+            let code = document.getElementById('load-code-input').value.trim().toLowerCase();
+            if(!code) return;
+            let num = parseInt(code, 36);
+            
+            // Gültigkeitsprüfung (max 7 Themen à 3 Trophäen = 16383 in Dezimal)
+            if (isNaN(num) || num < 0 || num > 16383) {
+                alert("Ungültiger Code! Bitte überprüfe deine Eingabe.");
+                return;
+            }
+            
+            for(let i=1; i<=7; i++) {
+                trophies[i] = num % 4;
+                currentLevel[i] = trophies[i]; // Level an erreichten Trophäen anpassen
+                num = Math.floor(num / 4);
+            }
+            
+            document.getElementById('save-code-display').value = code.toUpperCase();
+            document.getElementById('load-code-input').value = "";
+            
+            initGamification(); 
+            
+            // Springe zum ersten nicht-perfekten Thema (oder bleibe auf Welcome, wenn alles perfekt ist)
+            let total = checkGrandFinale();
+            if (total < 21) {
+                let nextTopic = 1;
+                for(let i=1; i<=7; i++){
+                    if(trophies[i] < 3) { nextTopic = i; break; }
+                }
+                showSection('topic' + nextTopic);
+            }
+        }
+
+        // HTML Download
+        function downloadHTML() {
+            // Um Eingaben beim Download zu behalten, DOM aktualisieren
+            document.querySelectorAll('input[type="text"]').forEach(input => {
+                input.setAttribute('value', input.value);
+            });
+            
+            const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "Potenzrechengesetze_Lerntrainer.html";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function initGamification() {
+            updateMenuUI();
+            for(let i=1; i<=7; i++) {
+                updateTrophyUI(i);
+                renderLevel(i);
+            }
+            checkGrandFinale();
+        }
+
+        function updateMenuUI() {
+            for(let i=1; i<=7; i++) {
+                const btn = document.getElementById(`btn-topic${i}`);
+                btn.onclick = () => showSection(`topic${i}`);
+                
+                let tr = trophies[i];
+                let trophyIcons = "";
+                for(let j=0; j<3; j++) {
+                    trophyIcons += j < tr ? `<i class="fas fa-trophy text-yellow-400 text-xs mx-[1px] drop-shadow"></i>` : `<i class="fas fa-trophy text-slate-600/50 text-xs mx-[1px]"></i>`;
+                }
+                
+                btn.innerHTML = `
+                    <div class="flex justify-between items-center w-full">
+                        <span><span class="inline-block w-6 font-bold text-indigo-400">${i}.</span> ${btn.dataset.title}</span>
+                        <span class="whitespace-nowrap ml-2 bg-slate-900/50 px-2 py-0.5 rounded-full border border-slate-700">${trophyIcons}</span>
+                    </div>`;
+            }
+        }
+
+        function updateTrophyUI(topic) {
+            let tr = trophies[topic];
+            let html = "";
+            for(let i=0; i<3; i++) {
+                html += i < tr ? `<i class="fas fa-trophy text-yellow-400 mx-1 text-xl drop-shadow-md"></i>` : `<i class="fas fa-trophy text-slate-700 mx-1 text-xl"></i>`;
+            }
+            const el = document.getElementById(`trophy-disp-${topic}`);
+            if(el) el.innerHTML = html;
+        }
+
+        function showSection(sectionId) {
+            const sections = document.querySelectorAll('.topic-section');
+            sections.forEach(sec => sec.classList.add('hidden'));
+            
+            const targetSection = document.getElementById(sectionId);
+            if(targetSection) targetSection.classList.remove('hidden');
+
+            const buttons = document.querySelectorAll('.nav-button');
+            buttons.forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-400', 'shadow-md');
+                btn.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
+            });
+
+            if(sectionId !== 'welcome') {
+                const activeButton = document.getElementById('btn-' + sectionId);
+                if(activeButton) {
+                    activeButton.classList.remove('bg-slate-800', 'text-slate-300', 'border-slate-700');
+                    activeButton.classList.add('bg-indigo-600', 'text-white', 'border-indigo-400', 'shadow-md');
+                }
+                document.getElementById('content-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function renderLevel(topic) {
+            const level = currentLevel[topic];
+            const container = document.getElementById(`exercises-t${topic}`);
+            if(!container) return;
+
+            if (level >= 3) {
+                container.innerHTML = `<div class="text-center p-8 bg-green-900/30 border border-green-500 rounded-xl shadow-lg mt-6">
+                    <i class="fas fa-check-circle text-5xl mb-4 text-green-400"></i>
+                    <h3 class="text-2xl font-bold text-green-400 mb-2">Perfekt gemeistert!</h3>
+                    <p class="text-slate-300">Du hast alle Trophäen für dieses Thema gesammelt.</p>
+                </div>`;
+                return;
+            }
+
+            const qData = allQuestions[topic][level];
+            let html = '<div class="space-y-4 text-sm md:text-base mt-6" id="q-container-' + topic + '">';
+
+            qData.forEach((q) => {
+                html += `<div class="flex items-center justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-inner">`;
+                html += `<span class="text-slate-200">${q.q}</span>`;
+                html += `<div class="flex items-center">`;
+
+                const getAttr = (a) => Array.isArray(a) ? `data-answers='${JSON.stringify(a)}'` : `data-answer="${a}"`;
+
+                if (q.type === 'calc') {
+                    html += `<input type="text" ${getAttr(q.a)} class="q-input w-24 bg-slate-900 border-2 border-slate-600 rounded-lg text-center text-white py-1 px-2 focus:outline-none focus:border-indigo-500 transition-colors">`;
+                } else if (q.type === 'poly') {
+                    html += `<input type="text" ${getAttr(q.a)} class="q-input w-40 bg-slate-900 border-2 border-slate-600 rounded-lg text-center text-white py-1 px-2 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Term (z.B. x^2-y)">`;
+                } else if (q.type === 'exp') {
+                    html += `<div class="flex items-start"><span class="text-2xl font-serif italic mr-1 text-slate-100">${q.b}</span><input type="text" ${getAttr(q.a)} class="q-input w-12 h-8 text-sm -mt-3 bg-slate-900 border-2 border-slate-600 rounded-md text-center text-white focus:outline-none focus:border-indigo-500 transition-colors"></div>`;
+                } else if (q.type === 'base') {
+                    html += `<div class="flex items-start"><input type="text" ${getAttr(q.a)} class="q-input w-16 h-10 bg-slate-900 border-2 border-slate-600 rounded-lg text-center text-white focus:outline-none focus:border-indigo-500 transition-colors"><span class="text-base font-bold -mt-3 ml-1 text-slate-200">${q.e}</span></div>`;
+                } else if (q.type === 'sci') {
+                    html += `<input type="text" ${getAttr(q.aM)} class="q-input w-16 bg-slate-900 border-2 border-slate-600 rounded-lg text-center text-white py-1 focus:outline-none focus:border-indigo-500 transition-colors">`;
+                    html += `<span class="mx-2 text-slate-300">\\(\\cdot 10\\)</span>`;
+                    html += `<input type="text" ${getAttr(q.aE)} class="q-input w-12 h-8 text-sm -mt-5 bg-slate-900 border-2 border-slate-600 rounded-md text-center text-white focus:outline-none focus:border-indigo-500 transition-colors">`;
+                } else if (q.type === 'multivar') {
+                    html += `<div class="flex items-start">
+                        <span class="text-2xl font-serif italic mr-1 text-slate-100">${q.b1}</span><input type="text" ${getAttr(q.a1)} class="q-input w-10 h-7 text-sm -mt-2 bg-slate-900 border-2 border-slate-600 rounded text-center text-white focus:outline-none focus:border-indigo-500 transition-colors">
+                        <span class="text-2xl font-serif italic ml-3 mr-1 text-slate-100">${q.b2}</span><input type="text" ${getAttr(q.a2)} class="q-input w-10 h-7 text-sm -mt-2 bg-slate-900 border-2 border-slate-600 rounded text-center text-white focus:outline-none focus:border-indigo-500 transition-colors">
+                    </div>`;
+                }
+                html += `</div></div>`;
+            });
+
+            html += `<div class="mt-6 text-center"><button onclick="checkLevel(${topic})" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-500 transition-all shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-1"><i class="fas fa-search mr-2"></i> Überprüfen & Weiter</button></div>`;
+            html += `</div>`;
+
+            container.innerHTML = html;
+            MathJax.typesetPromise([container]);
+        }
+
+        function checkLevel(topic) {
+            const container = document.getElementById(`q-container-${topic}`);
+            const inputs = container.querySelectorAll('.q-input');
+            let allCorrect = true;
+
+            inputs.forEach(input => {
+                let val = input.value.replace(/\s/g, '').toLowerCase().replace(',', '.');
+                let isCorrect = false;
+
+                if (val === '') {
+                    allCorrect = false;
+                } else if (input.dataset.answers) {
+                    const validAnswers = JSON.parse(input.dataset.answers);
+                    isCorrect = validAnswers.includes(val);
+                } else if (input.dataset.answer) {
+                    isCorrect = (val === input.dataset.answer);
+                }
+
+                if (isCorrect) {
+                    input.classList.remove('border-slate-600', 'border-red-500', 'bg-red-900/30', 'focus:border-indigo-500');
+                    input.classList.add('border-green-500', 'bg-green-900/40');
+                } else {
+                    input.classList.remove('border-slate-600', 'border-green-500', 'bg-green-900/40', 'focus:border-indigo-500');
+                    input.classList.add('border-red-500', 'bg-red-900/30');
+                    allCorrect = false;
+                }
+            });
+
+            if (allCorrect) {
+                trophies[topic]++;
+                currentLevel[topic]++;
+                updateTrophyUI(topic);
+                updateMenuUI();
+
+                if (trophies[topic] === 3) {
+                    confetti({
+                        particleCount: 150,
+                        spread: 80,
+                        origin: { y: 0.6 },
+                        colors: ['#eab308', '#4f46e5', '#22c55e']
+                    });
+                } else {
+                    confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 }, colors: ['#4f46e5', '#38bdf8'] });
+                }
+                
+                renderLevel(topic);
+                checkGrandFinale();
+            }
+        }
+
+        function checkGrandFinale() {
+            let total = Object.values(trophies).reduce((a, b) => a + b, 0);
+            if (total === 21) {
+                document.getElementById('content').classList.add('hidden');
+                document.getElementById('topbar').classList.add('hidden');
+                document.getElementById('finale').classList.remove('hidden');
+                startContinuousFireworks();
+            }
+            return total;
+        }
+
+        function startContinuousFireworks() {
+            var duration = 15 * 1000;
+            var animationEnd = Date.now() + duration;
+            var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+
+            function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+            var interval = setInterval(function() {
+                var timeLeft = animationEnd - Date.now();
+                if (timeLeft <= 0) return clearInterval(interval);
+                
+                var particleCount = 50 * (timeLeft / duration);
+                confetti(Object.assign({}, defaults, { 
+                    particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } 
+                }));
+                confetti(Object.assign({}, defaults, { 
+                    particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } 
+                }));
+            }, 250);
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        mjx-container { overflow-x: auto; overflow-y: hidden; padding-top: 3px; padding-bottom: 3px; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-300 font-sans min-h-screen selection:bg-indigo-500/30 overflow-x-hidden">
+
+    <!-- Ladebildschirm -->
+    <div id="loading" class="flex items-center justify-center h-screen w-screen absolute bg-slate-900 z-50">
+        <div class="text-center text-slate-300">
+            <i class="fas fa-circle-notch fa-spin text-4xl text-indigo-500 mb-4"></i>
+            <h2 class="text-xl font-semibold">Lade Trainingsumgebung...</h2>
+        </div>
+    </div>
+
+    <!-- Das große Finale (Versteckt bis alles gelöst ist) -->
+    <div id="finale" class="hidden fixed inset-0 bg-slate-950 z-50 flex flex-col items-center justify-center text-center p-6">
+        <div class="max-w-3xl">
+            <h1 class="text-6xl md:text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 mb-6 drop-shadow-lg animate-pulse">
+                Respekt!
+            </h1>
+            <p class="text-3xl md:text-5xl text-white font-bold leading-tight mb-8">
+                Die Grundlagen hast du wirklich alle verstanden!
+            </p>
+            <p class="text-xl text-slate-400 mb-12">Du bist bereit für die Klassenarbeit.</p>
+            <button onclick="location.reload()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-xl font-bold text-xl shadow-lg transition transform hover:scale-105">
+                <i class="fas fa-redo mr-2"></i> Nochmal von vorne
+            </button>
+        </div>
+    </div>
+
+    <!-- Wrapper für die normale Seite -->
+    <div id="main-wrapper" class="hidden flex flex-col min-h-screen">
+        
+        <!-- NEU: Top-Bar für Save/Load und Download -->
+        <div id="topbar" class="bg-slate-950 border-b border-slate-800 text-sm py-3 px-4 md:px-6 z-40 relative shadow-md">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <button onclick="downloadHTML()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-700 transition flex items-center shadow-sm">
+                        <i class="fas fa-download mr-2 text-indigo-400"></i> HTML Speichern
+                    </button>
+                </div>
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                    <!-- Laden -->
+                    <div class="flex items-center space-x-2 bg-slate-900 p-1.5 rounded-lg border border-slate-800 shadow-inner">
+                        <span class="text-slate-400 px-2 hidden sm:inline"><i class="fas fa-folder-open mr-1"></i></span>
+                        <input type="text" id="load-code-input" maxlength="4" class="w-20 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-center font-mono uppercase tracking-widest focus:outline-none focus:border-indigo-500 placeholder-slate-600" placeholder="CODE">
+                        <button onclick="loadSaveCode()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded transition font-medium">Laden</button>
+                    </div>
+                    <!-- Speichern -->
+                    <div class="flex items-center space-x-2 bg-slate-900 p-1.5 rounded-lg border border-slate-800 shadow-inner">
+                        <button onclick="generateSaveCode()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded transition font-medium flex items-center">
+                            <i class="fas fa-save mr-2 sm:hidden"></i><span class="hidden sm:inline">Code generieren</span>
+                        </button>
+                        <input type="text" id="save-code-display" readonly class="w-20 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-emerald-400 text-center font-mono font-bold tracking-widest" placeholder="----">
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3 text-xs text-slate-400 text-center md:text-right flex flex-col md:flex-row items-center justify-center md:justify-end gap-2 border-t border-slate-800/50 pt-2">
+                <i class="fas fa-info-circle text-indigo-400 text-base mb-1 md:mb-0"></i>
+                <span class="max-w-3xl text-center md:text-left"><strong>Lernfortschritt speichern:</strong> Möchtest du eine Pause machen? Klicke auf <em>"Code generieren"</em> und notiere dir die 4 Zeichen. Gib diesen Code beim nächsten Mal einfach unter <em>"CODE"</em> ein und klicke auf <em>"Laden"</em>, um all deine erspielten Trophäen wiederherzustellen!</span>
+            </div>
+        </div>
+
+        <header class="bg-slate-900 border-b border-slate-800 shadow-sm sticky top-0 z-30">
+            <div class="max-w-6xl mx-auto px-6 py-5">
+                <h1 class="text-3xl font-extrabold text-white tracking-tight cursor-pointer hover:text-indigo-400 transition-colors" onclick="showSection('welcome')">
+                    Potenzrechengesetze
+                </h1>
+            </div>
+        </header>
+
+        <div id="content" class="flex-grow max-w-6xl mx-auto w-full px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Navigation -->
+            <div class="lg:col-span-4">
+                <div class="bg-slate-850 rounded-xl shadow-lg border border-slate-700 p-5 sticky top-28">
+                    <h2 class="text-lg font-bold mb-4 text-slate-200 border-b border-slate-700 pb-2 uppercase tracking-wider">Lernpfad</h2>
+                    <nav class="flex flex-col space-y-2 text-sm md:text-base">
+                        <button id="btn-topic1" data-title="Potenzen berechnen" class="nav-button w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 border"></button>
+                        <button id="btn-topic2" data-title="Zehnerpotenzen" class="nav-button w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 border"></button>
+                        <button id="btn-topic3" data-title="Gleiche Basis" class="nav-button w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 border"></button>
+                        <button id="btn-topic4" data-title="Potenzen potenzieren" class="nav-button w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 border"></button>
+                        <button id="btn-topic5" data-title="Gleiche Exponenten" class="nav-button w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 border"></button>
+                        <button id="btn-topic6" data-title="Wurzeln und Potenzen" class="nav-button w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 border"></button>
+                        <button id="btn-topic7" data-title="Gemischte Aufgaben" class="nav-button w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 border"></button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Inhaltsbereich -->
+            <div id="content-area" class="lg:col-span-8">
+                
+                <!-- Startseite -->
+                <div id="welcome" class="topic-section bg-slate-850 rounded-xl shadow-lg border border-slate-700 p-8 md:p-12 text-center">
+                    <i class="fas fa-gamepad text-6xl text-indigo-500 mb-6"></i>
+                    <h2 class="text-3xl font-bold text-white mb-4">Interaktive Challenge!</h2>
+                    <p class="text-lg text-slate-400 mb-6 max-w-xl mx-auto">
+                        Sammle in jedem Thema <strong class="text-yellow-400">3 Trophäen</strong>. 
+                        Du kannst die Themen in beliebiger Reihenfolge bearbeiten. Wenn du alle 21 Trophäen hast, wartet eine kleine Überraschung auf dich!
+                    </p>
+                    <div class="bg-slate-900 border border-slate-700 rounded-lg p-4 inline-block mb-8 text-sm text-slate-400 text-left">
+                        <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                        <strong>Tipp:</strong> Nutze oben die "Code generieren" Funktion, wenn du eine Pause machst. Mit deinem Code kannst du morgen genau hier weitermachen.
+                    </div>
+                    <br>
+                    <button onclick="showSection('topic1')" class="bg-indigo-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-indigo-500 transition-colors shadow-lg hover:shadow-indigo-500/50">
+                        Los geht's <i class="fas fa-play ml-2"></i>
+                    </button>
+                </div>
+
+                <!-- Thema 1 -->
+                <div id="topic1" class="topic-section hidden bg-slate-850 rounded-xl shadow-lg border border-slate-700 overflow-hidden">
+                    <div class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center flex-wrap gap-4">
+                        <h2 class="text-xl font-bold text-white">1. Potenzen berechnen</h2>
+                        <div class="bg-slate-900 px-3 py-1 rounded-full border border-slate-700 shadow-inner flex items-center">
+                            <span class="text-xs font-bold text-slate-400 mr-2 uppercase">Trophäen:</span>
+                            <span id="trophy-disp-1"></span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p class="mb-2 text-slate-300">Für eine beliebige Zahl \(a\) und positive natürliche Zahlen \(n\) gilt:</p>
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700 text-center mb-4 overflow-x-auto">\[ a^n = \underbrace{a \cdot a \cdot \dots \cdot a}_{n \text{ Faktoren}} \]</div>
+                        
+                        <p class="mb-2 text-slate-300">Für beliebige Zahlen \(a \neq 0\) und positive natürliche Zahlen \(n\) gilt (<strong>negative Exponenten</strong>):</p>
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-slate-700 text-center mb-4 overflow-x-auto">\[ a^{-n} = \frac{1}{a^n} = \frac{1}{\underbrace{a \cdot a \cdot \dots \cdot a}_{n \text{ Faktoren}}} \]</div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6 mt-4">
+                            <div class="bg-indigo-900/20 p-4 rounded-lg border border-indigo-500/30">
+                                <p class="font-bold text-indigo-300 mb-1">Die Nullregel:</p>
+                                <p class="text-slate-400 mb-2">Für alle \(a \neq 0\) definiert man:</p>
+                                <div class="text-center py-1 font-bold text-base">\( a^0 = 1 \)</div>
+                            </div>
+                            <div class="bg-indigo-900/20 p-4 rounded-lg border border-indigo-500/30">
+                                <p class="font-bold text-indigo-300 mb-1">Brüche als Basis:</p>
+                                <p class="text-slate-400 mb-2">Für \(a, b \neq 0\) gilt:</p>
+                                <div class="text-center py-1 font-bold text-base overflow-x-auto">\( \left(\frac{a}{b}\right)^{-n} = \left(\frac{b}{a}\right)^n \)</div>
+                            </div>
+                        </div>
+                        <div id="exercises-t1"></div>
+                    </div>
+                </div>
+
+                <!-- Thema 2 -->
+                <div id="topic2" class="topic-section hidden bg-slate-850 rounded-xl shadow-lg border border-slate-700 overflow-hidden">
+                    <div class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center flex-wrap gap-4">
+                        <h2 class="text-xl font-bold text-white">2. Zehnerpotenzen</h2>
+                        <div class="bg-slate-900 px-3 py-1 rounded-full border border-slate-700 shadow-inner flex items-center">
+                            <span class="text-xs font-bold text-slate-400 mr-2 uppercase">Trophäen:</span>
+                            <span id="trophy-disp-2"></span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p class="mb-4 text-slate-300">Große Zahlen sowie Zahlen, die in der Nähe von null liegen, werden häufig mithilfe von Zehnerpotenzen angegeben.</p>
+                        <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-700 mb-4">
+                            <h3 class="font-bold text-indigo-300 mb-2">Wissenschaftliche Schreibweise (SCI)</h3>
+                            <p class="text-sm text-slate-300">Bei der wissenschaftlichen Schreibweise steht vor der Zehnerpotenz stets ein <strong>Faktor, der mindestens gleich 1 und kleiner als 10 ist</strong>.</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-center mb-6">
+                            <div class="bg-slate-900/30 p-4 rounded-lg border border-slate-700">
+                                <p class="text-slate-400 text-sm mb-2">Sehr große Zahlen:</p>
+                                <div class="font-bold text-lg text-white">\( 230.000 = 2{,}3 \cdot 10^5 \)</div>
+                            </div>
+                            <div class="bg-slate-900/30 p-4 rounded-lg border border-slate-700">
+                                <p class="text-slate-400 text-sm mb-2">Sehr kleine Zahlen:</p>
+                                <div class="font-bold text-lg text-white">\( 0{,}000078 = 7{,}8 \cdot 10^{-5} \)</div>
+                            </div>
+                        </div>
+                        <div id="exercises-t2"></div>
+                    </div>
+                </div>
+
+                <!-- Thema 3 -->
+                <div id="topic3" class="topic-section hidden bg-slate-850 rounded-xl shadow-lg border border-slate-700 overflow-hidden">
+                    <div class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center flex-wrap gap-4">
+                        <h2 class="text-xl font-bold text-white">3. Gleiche Basis</h2>
+                        <div class="bg-slate-900 px-3 py-1 rounded-full border border-slate-700 shadow-inner flex items-center">
+                            <span class="text-xs font-bold text-slate-400 mr-2 uppercase">Trophäen:</span>
+                            <span id="trophy-disp-3"></span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p class="mb-4 text-slate-300">Beim Multiplizieren bzw. Dividieren von Potenzen mit <strong>gleicher Basis</strong> (\(a \neq 0\)) kann man die Exponenten <strong>addieren</strong> bzw. <strong>subtrahieren</strong>. Die gemeinsame Basis bleibt dabei erhalten.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-700 text-center">
+                                <div class="font-bold mb-3 text-indigo-300 border-b border-slate-700 pb-2">Multiplikation</div>
+                                <div class="text-lg mb-3">\[ a^m \cdot a^n = a^{m+n} \]</div>
+                                <div class="text-sm text-slate-400">Beispiel: \( 3^4 \cdot 3^2 = 3^{4+2} = 3^6 \)</div>
+                            </div>
+                            <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-700 text-center">
+                                <div class="font-bold mb-3 text-indigo-300 border-b border-slate-700 pb-2">Division</div>
+                                <div class="text-lg mb-3">\[ a^m : a^n = \frac{a^m}{a^n} = a^{m-n} \]</div>
+                                <div class="text-sm text-slate-400">Beispiel: \( 3^6 : 3^2 = 3^{6-2} = 3^4 \)</div>
+                            </div>
+                        </div>
+                        <div id="exercises-t3"></div>
+                    </div>
+                </div>
+
+                <!-- Thema 4 -->
+                <div id="topic4" class="topic-section hidden bg-slate-850 rounded-xl shadow-lg border border-slate-700 overflow-hidden">
+                    <div class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center flex-wrap gap-4">
+                        <h2 class="text-xl font-bold text-white">4. Potenzen potenzieren</h2>
+                        <div class="bg-slate-900 px-3 py-1 rounded-full border border-slate-700 shadow-inner flex items-center">
+                            <span class="text-xs font-bold text-slate-400 mr-2 uppercase">Trophäen:</span>
+                            <span id="trophy-disp-4"></span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p class="mb-4 text-slate-300">Beim Potenzieren von Potenzen kann man die Exponenten miteinander <strong>multiplizieren</strong>. Die Basis (\(a \neq 0\)) wird dabei beibehalten.</p>
+                        <div class="bg-slate-900/50 p-6 rounded-lg border border-slate-700 text-center mb-4">
+                            <div class="text-2xl font-bold text-indigo-400 overflow-x-auto">\[ (a^m)^n = a^{m \cdot n} \]</div>
+                        </div>
+                        <div class="text-center text-slate-400 text-sm mb-6">
+                            <strong>Beispiel:</strong> \( (10^2)^4 = 10^{2 \cdot 4} = 10^8 \)
+                        </div>
+                        <div id="exercises-t4"></div>
+                    </div>
+                </div>
+
+                <!-- Thema 5 -->
+                <div id="topic5" class="topic-section hidden bg-slate-850 rounded-xl shadow-lg border border-slate-700 overflow-hidden">
+                    <div class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center flex-wrap gap-4">
+                        <h2 class="text-xl font-bold text-white">5. Gleiche Exponenten</h2>
+                        <div class="bg-slate-900 px-3 py-1 rounded-full border border-slate-700 shadow-inner flex items-center">
+                            <span class="text-xs font-bold text-slate-400 mr-2 uppercase">Trophäen:</span>
+                            <span id="trophy-disp-5"></span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p class="mb-4 text-slate-300">Beim Multiplizieren und Dividieren von Potenzen mit <strong>gleichen Exponenten</strong> kann man die Basen (\(a, b \neq 0\)) multiplizieren bzw. dividieren. Der gemeinsame Exponent bleibt erhalten.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-700 text-center">
+                                <div class="font-bold mb-3 text-indigo-300 border-b border-slate-700 pb-2">Gleiche Exponenten (Mal)</div>
+                                <div class="text-lg mb-3 overflow-x-auto">\[ a^n \cdot b^n = (a \cdot b)^n \]</div>
+                                <div class="text-sm text-slate-400">Beispiel: \( 5^4 \cdot 2^4 = (5 \cdot 2)^4 = 10^4 \)</div>
+                            </div>
+                            <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-700 text-center">
+                                <div class="font-bold mb-3 text-indigo-300 border-b border-slate-700 pb-2">Gleiche Exponenten (Geteilt)</div>
+                                <div class="text-lg mb-3 overflow-x-auto">\[ a^n : b^n = \frac{a^n}{b^n} = \left(\frac{a}{b}\right)^n \]</div>
+                                <div class="text-sm text-slate-400">Beispiel: \( 3^5 : 7^5 = \left(\frac{3}{7}\right)^5 \)</div>
+                            </div>
+                        </div>
+                        <div id="exercises-t5"></div>
+                    </div>
+                </div>
+
+                <!-- Thema 6 -->
+                <div id="topic6" class="topic-section hidden bg-slate-850 rounded-xl shadow-lg border border-slate-700 overflow-hidden">
+                    <div class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center flex-wrap gap-4">
+                        <h2 class="text-xl font-bold text-white">6. Wurzeln & Exponenten</h2>
+                        <div class="bg-slate-900 px-3 py-1 rounded-full border border-slate-700 shadow-inner flex items-center">
+                            <span class="text-xs font-bold text-slate-400 mr-2 uppercase">Trophäen:</span>
+                            <span id="trophy-disp-6"></span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="bg-indigo-900/20 p-4 rounded-lg border border-indigo-500/30 mb-6">
+                            <p class="mb-2 text-slate-300">Die nicht negative Lösung für \(x\) der Gleichung \(x^n = a\) (mit \(a \ge 0\)) wird <strong>n-te Wurzel aus a</strong> genannt.</p>
+                            <p class="font-bold text-center text-lg my-2 text-white">\( x = \sqrt[n]{a} \)</p>
+                            <p class="text-sm text-indigo-300 text-center">Beispiel: \(x^3 = 64 \implies x = \sqrt[3]{64} = 4\)</p>
+                        </div>
+                        <p class="mb-4 text-slate-300">Potenzen mit <strong>rationalen Exponenten (Brüchen)</strong> kann man mithilfe von n-ten Wurzeln darstellen. Es gilt (für \(a > 0\)):</p>
+                        <div class="space-y-3 mb-6">
+                            <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700 flex flex-col md:flex-row items-center justify-between px-6">
+                                <div class="text-lg overflow-x-auto w-full md:w-auto text-center md:text-left mb-2 md:mb-0">\[ a^{\frac{1}{n}} = \sqrt[n]{a} \]</div>
+                                <div class="text-sm text-slate-400 text-center md:text-right">Beispiel: \( 25^{\frac{1}{2}} = \sqrt{25} = 5 \)</div>
+                            </div>
+                            <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700 flex flex-col md:flex-row items-center justify-between px-6">
+                                <div class="text-lg overflow-x-auto w-full md:w-auto text-center md:text-left mb-2 md:mb-0">\[ a^{\frac{m}{n}} = \sqrt[n]{a^m} = (\sqrt[n]{a})^m \]</div>
+                                <div class="text-sm text-slate-400 text-center md:text-right">Beispiel: \( 8^{\frac{2}{3}} = (\sqrt[3]{8})^2 = 4 \)</div>
+                            </div>
+                            <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700 flex flex-col md:flex-row items-center justify-between px-6">
+                                <div class="text-lg overflow-x-auto w-full md:w-auto text-center md:text-left mb-2 md:mb-0">\[ a^{-\frac{m}{n}} = \frac{1}{\sqrt[n]{a^m}} \]</div>
+                                <div class="text-sm text-slate-400 text-center md:text-right">Beispiel: \( 16^{-\frac{1}{4}} = \frac{1}{\sqrt[4]{16}} = \frac{1}{2} \)</div>
+                            </div>
+                        </div>
+                        <div id="exercises-t6"></div>
+                    </div>
+                </div>
+
+                <!-- Thema 7 -->
+                <div id="topic7" class="topic-section hidden bg-slate-850 rounded-xl shadow-lg border-2 border-indigo-500 overflow-hidden">
+                    <div class="bg-indigo-900/40 px-6 py-4 border-b border-indigo-500/50 flex justify-between items-center flex-wrap gap-4">
+                        <h2 class="text-xl font-bold text-white"><i class="fas fa-crown text-yellow-400 mr-2"></i> 7. Gemischte Terme</h2>
+                        <div class="bg-slate-900 px-3 py-1 rounded-full border border-slate-700 shadow-inner flex items-center">
+                            <span class="text-xs font-bold text-slate-400 mr-2 uppercase">Trophäen:</span>
+                            <span id="trophy-disp-7"></span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p class="mb-4 text-slate-300">Fasse die Terme mithilfe <strong>mehrerer Potenzgesetze</strong> so weit wie möglich zusammen. Nutze bei Brüchen auch das <strong>Distributivgesetz (Ausklammern)</strong>, um anschließend kürzen zu können!</p>
+                        <p class="text-sm text-indigo-300 bg-indigo-900/20 border border-indigo-500/30 p-3 rounded-lg mb-4"><i class="fas fa-info-circle mr-1"></i> <strong>Tipp:</strong> Wenn ein Exponent 1 ist, trage eine "1" ein. Wenn als Ergebnis ein ganzer Term (wie z.B. <code>1+xy</code> oder <code>x^2-y^2</code>) gesucht ist, tippe ihn direkt in das Feld ein!</p>
+                        <div id="exercises-t7"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        
+        <footer class="text-center py-6 text-slate-500 text-sm border-t border-slate-800">
+            <p>&copy; 2026 Lerntrainer Mathematik</p>
+        </footer>
+    </div>
+
+<!-- rechtliches --><style>.erik-recht{font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;text-align:center;padding:18px 12px 22px;opacity:.75}.erik-recht a{color:inherit}@media print{.erik-recht{display:none}}</style><footer class="erik-recht"><a href="https://erikdahlmann.github.io/impressum.html">Impressum</a> · <a href="https://erikdahlmann.github.io/datenschutz.html">Datenschutz</a></footer><!-- /rechtliches --></body>
+</html>
